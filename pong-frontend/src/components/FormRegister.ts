@@ -1,4 +1,4 @@
-import { FancyButton } from "./Button";
+import { FancyButton, ReturnButton } from "./Button";
 import DOMPurify from "dompurify";
 import { InputEmail } from "./InputEmail";
 import { InputName } from "./InputName";
@@ -13,6 +13,9 @@ export function Register(): HTMLElement {
 	viewDiv.style.backgroundImage = "url('/default_background.jpg')";
 	viewDiv.style.backgroundSize = "cover";
 
+	const backBtn = ReturnButton("/");
+	viewDiv.appendChild(backBtn);
+
 	// Create a card to store Form
 	const card = document.createElement("div");
 	card.className = "flex flex-col items-center bg-gray-950 border-4 border-gray-700 rounded-2xl shadow-lg px-20 py-12 w-[520px]";
@@ -23,7 +26,7 @@ export function Register(): HTMLElement {
 
     formElement.onsubmit = (e) => {
         e.preventDefault();
-        //console.log("2FA code submitted");
+        console.log("2FA code submitted");
     };
 
 	// Add a title to the form
@@ -97,7 +100,7 @@ export function Register(): HTMLElement {
 		if (response.message === 'success') {
 			profile.username = response.payload.username;
 			profile.id = response.payload.id;
-			navigateTo("/login");
+			navigateTo("/");
 		}
 		else if (response.status === 'error') {
 			const existingAlert = document.getElementById("alert-popup");

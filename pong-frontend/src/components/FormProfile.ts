@@ -1,10 +1,8 @@
 import { fetchRequest, toggle2FA } from "../utils";
 import { profile } from "../app";
 import { jwt } from "../app";
-import { navigateTo } from "../utils";
-import { Button } from "./Button";
+import { Button, ReturnButton } from "./Button";
 import { endpoint } from "../endPoints";
-import { stateProxyHandler } from "../states/stateProxyHandler";
 const AVATAR_DEFAUT = "avatar_default.jpg"
 const AVATAR1 = "avatar3.jpg"
 const AVATAR2 = "avatar5.jpg"
@@ -33,41 +31,7 @@ export function ProfilePage(): HTMLElement {
 	headerInner.className = "flex items-center justify-between relative";
 
 	// Bouton flèche "Gaming Back"
-	const backBtn = document.createElement("button");
-	backBtn.className = `
-		absolute left-0 top-2
-		flex items-center justify-center
-		w-12 h-12
-		group
-		transition
-	`;
-
-	backBtn.innerHTML = `
-		<div class="
-			w-12 h-12 flex items-center justify-center
-			bg-black/40 border border-red-600
-			rounded-xl
-			shadow-[0_0_10px_rgba(255,0,0,0.4)]
-			group-hover:shadow-[0_0_18px_rgba(255,0,0,0.9)]
-			group-hover:border-red-500
-			transition-all duration-200
-			group-hover:scale-110
-		">
-			<svg xmlns="http://www.w3.org/2000/svg"
-				viewBox="0 0 24 24"
-				class="w-8 h-8 text-red-500 group-hover:text-red-400 transition">
-				
-				<!-- Chevron gaming stylisé -->
-				<path fill="currentColor"
-					d="M14.8 3.3 6.1 12l8.7 8.7 1.9-1.9L9.9 12l6.8-6.8-1.9-1.9z"/>
-			</svg>
-		</div>
-	`;
-
-	backBtn.onclick = () => {
-		navigateTo("/intra");
-	};
-
+	const backBtn = ReturnButton("/intra");
 
 	// ===== Zone centre : Profil =====
 
@@ -103,8 +67,9 @@ export function ProfilePage(): HTMLElement {
 	avatarSection.appendChild(avatarLabel);
 
 	const avatarPreview = document.createElement("img");
-	const avatarPath = `${endpoint.pong_backend_api}/avatar/${stateProxyHandler.profile.avatar}`;
-	//console.log("AVATAR PATH:", avatarPath);
+	const path = profile.avatar_url ? profile.avatar_url : AVATAR_DEFAUT;
+	const avatarPath = `${endpoint.pong_backend_api}/avatar/${path}`;
+	console.log("AVATAR PATH:", avatarPath);
 	avatarPreview.src = avatarPath;
 	avatarPreview.id = "avatarPreview";
 	avatarPreview.className = "w-24 h-24 rounded-full object-cover";
@@ -269,7 +234,7 @@ export function ProfilePage(): HTMLElement {
 
 		const modal = document.createElement("div");
 		modal.className = "bg-[#1e2124] p-8 rounded-xl border border-gray-700 flex flex-col gap-6 items-center w-[340px] shadow-xl";
-
+		modal.id = "2fa-modal";
 		const text = document.createElement("p");
 		text.className = "text-white text-center font-abee";
 		text.textContent = profile.twoFA_enabled
@@ -349,18 +314,23 @@ export function ProfilePage(): HTMLElement {
 		const curPwdEl = document.getElementById("current_password_input") as HTMLInputElement | null;
 		const newPwdEl = document.getElementById("new_password_input") as HTMLInputElement | null;
 
-		const nextName = nameEl?.value.trim() ?? "";
-		const nextMail = mailEl?.value.trim() ?? "";
+		const payload: Record<string, unknown> = {};
+		const nextName = nameEl?.value.trim() !== "" ? nameEl?.value.trim() : profile.username
+		const nextMail = mailEl?.value.trim() !== "" ? mailEl?.value.trim() : profile.email
 		const curPwd = curPwdEl?.value ?? "";
 		const newPwd = newPwdEl?.value ?? "";
 
-		const payload: Record<string, unknown> = {};
-		if (nextName && nextName !== profile.username) {
-			payload.username = nextName;
+		if (nextName === profile.username) {
+			payload.username = undefined;
+		} else {
+			payload.username = nextName
 		}
-		if (nextMail && nextMail !== profile.email) {
+		
+		if (nextMail === profile.email) {
+			payload.email = undefined;
+		}
+		else
 			payload.email = nextMail;
-		}
 
 		if (curPwd && newPwd) {
 			payload.current_password = curPwd;
@@ -380,21 +350,21 @@ export function ProfilePage(): HTMLElement {
 
 		try {
 			const data = await fetchRequest("/update", "PUT", {}, { body: JSON.stringify(payload) });
-			//console.log("DATA FROM BACKEND:", data);
+			console.log("DATA FROM BACKEND:", data);
 
 			if (data.message === 'success') {
 				profile.username = data.payload.username;
 				profile.email = data.payload.email;
 
-				//console.log("Profile updated", data);
+				console.log("Profile updated", data);
 				alert(("your profil has changed "));
-				const response = await fetchRequest(
-					`/logout`,
-					"GET"
-				);
-				if (response.message === "success") {
-					navigateTo('/');
-				}
+				// const response = await fetchRequest(
+				// 	`/logout`,
+				// 	"GET"
+				// );
+				// if (response.message === "success") {
+					// navigateTo('/intra');
+				// }
 
 			}
 			else {
@@ -431,9 +401,7 @@ export function ProfilePage(): HTMLElement {
 
 export async function handleProfilePage(avatarPreview: HTMLImageElement, pickFileBtn: HTMLButtonElement,
 	avatarFile: HTMLInputElement, avatarGrid: HTMLDivElement): Promise<void> {
-	//console.log("handleProfilePage called");
-	//console.log("DOM check:", {
-	//});
+	console.log("handleProfilePage called");
 
 	let data;
 	try {
@@ -475,7 +443,7 @@ export function bind_user_avatar_upload(user: { avatar_url: string | null }, ava
 		const allow = ["image/png", "image/jpeg", "image/jpg"];
 		if (!allow.includes(f.type) || f.size > 5 * 1024 * 1024) {
 			avatarFile.value = "";
-			//console.log("image format error");
+			console.log("image format error");
 			return;
 		}
 
@@ -496,7 +464,7 @@ export function bind_user_avatar_upload(user: { avatar_url: string | null }, ava
 			if (!data.payload?.avatar_url) throw new Error("Avatar not receved");
 
 
-			//console.log("AVATAR SAVED AT DB:", data.payload.avatar_url);
+			console.log("AVATAR SAVED AT DB:", data.payload.avatar_url);
 			user.avatar_url = data.payload.avatar_url;
 			profile.avatar_url = data.payload.avatar_url;
 
@@ -525,7 +493,7 @@ export function upload_avatar(user: { avatar_url: string | null }, avatarPreview
 		avatarPreview.src = AVATAR_DEFAUT;
 	};
 
-	//console.log(user.avatar_url);
+	console.log(user.avatar_url);
 
 	const presetButtons = avatarGrid.querySelectorAll<HTMLButtonElement>(".preset-btn");
 

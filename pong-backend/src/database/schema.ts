@@ -7,9 +7,7 @@ export async function createSchema() {
 			email TEXT UNIQUE NOT NULL,
 			password TEXT NOT NULL,
 			avatar_url TEXT DEFAULT 'avatar_default.jpg',
-			status TEXT DEFAULT 'disconnect',
-			wins INT DEFAULT 0,
-			losses INT DEFAULT 0,
+			authToken TEXT DEFAULT '',
 			twoFA_enabled BOOLEAN DEFAULT 0,
 			created_at DATE DEFAULT (date('now')),
 			updated_at DATE DEFAULT (date('now')))`);
@@ -46,6 +44,7 @@ export async function createSchema() {
 			content TEXT NOT NULL,
 			sender INTEGER NOT NULL,
 			isBlocked BOOLEAN DEFAULT 0,
+			isRead BOOLEAN DEFAULT 0,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE,
 			FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE)
@@ -62,5 +61,6 @@ export async function createSchema() {
 			status TEXT DEFAULT 'pending',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY(from_id) REFERENCES users(id) ON DELETE CASCADE,
-			FOREIGN KEY(to_id) REFERENCES users(id) ON DELETE CASCADE)`);
+			FOREIGN KEY(to_id) REFERENCES users(id) ON DELETE CASCADE)`
+		);
 }

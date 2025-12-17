@@ -1,6 +1,7 @@
 import { playerStatus } from '../enum_status/enum_userStatus.js';
 import { User } from '../types/RegisterType.js';
 import db from '../database/db.js';
+import bcrypt from 'bcrypt';
 
 export function getIdUser(id: number): User | null 
 {
@@ -24,7 +25,6 @@ export function updatedUserInDB(user : User): void
       email = ?,
       username = ?,
       password = ?,
-      status = ?,
       updated_at = date('now')
     WHERE id = ?
   `);
@@ -33,7 +33,22 @@ export function updatedUserInDB(user : User): void
     user.email,
     user.username,
     user.password,
-    user.status,
     user.id
   );
+}
+
+export function updateUsername(username:string, id: number) {
+    const stm = db.prepare('UPDATE users SET username = ? WHERE id = ?');
+    stm.run(username, id)
+}
+
+export function updateEmail(email:string, id: number) {
+    const stm = db.prepare('UPDATE users SET email = ? WHERE id = ?');
+    stm.run(email, id)
+}
+
+export async function updatePassword(password:string, id: number) {
+    const hash = await bcrypt.hash(password, 10)
+    const stm = db.prepare('UPDATE users SET password = ? WHERE id = ?');
+    stm.run(hash, id)
 }

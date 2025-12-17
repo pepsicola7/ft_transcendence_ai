@@ -1,53 +1,33 @@
-import { Resend } from "resend";
 import { UsersModel } from "../models/usersModel.js";
 import db from "../database/db.js";
-
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+import speakeasy from "speakeasy";
+import QRCode from "qrcode";
 
 class AuthService {
-
-    private resend = new Resend(RESEND_API_KEY || "123");
-    private usersModelInstance = new UsersModel(db);
+    private usersModelInstance = new UsersModel(db)
 
     static generate2FACode(): string {
         return Math.floor(100000 + Math.random() * 900000).toString();
     }
 
-    async sendEmail(destination: string, subject: string, html: string): Promise<{ data: any, error: any }> {
-        const defaultReceiver = process.env.EMAIL_DEFAULT_RECEIVER || "";
-        const { data, error } = await this.resend.emails.send({
-            from: "onboarding@resend.dev",
-            to: defaultReceiver,
-            subject: subject,
-            html: html
-        });
-        return { data, error };
+    async sendQrCode(id: number): Promise<{ message: any, data: any }> {
+        const secret = speakeasy.generateSecret({ length: 20 });
+        if (secret === undefined || secret.otpauth_url === undefined)
+            return {message: 'error', data: ''};
+        const qr = await QRCode.toDataURL(secret.otpauth_url);
+
+        this.usersModelInstance.saveAuthToken(id, secret.base32);
+        return {message: 'success', data: { qrCode: qr }};
     }
 
-    guestLoginValidation(username: string) {
-        // Look if the user is connected in the room
-        // const connectedUser = connectedRoomInstance.getById(username);
-        // if (connectedUser) {
-        //     // Disconnect user first
-        //     connectedRoomInstance.disconnect(username);
-        // }
-
-        // // Look for existing user
-        // const existingUser = this.usersModelInstance.findUserByEmailOrUsername(username);
-        // if (existingUser) {
-        //     connectedRoomInstance.addUser(existingUser.username, Number(existingUser.id));
-        //     return { message: 'success', username: existingUser.username, id: existingUser.id };
-        // }
-
-        // // Save guest user
-        // const saveAtDatabase: SaveUser = this.usersModelInstance.saveGuestUsername(username);
-        // if ('error' in saveAtDatabase) {
-        //     return { error: saveAtDatabase.error };
-        // }
-
-        // connectedRoomInstance.addUser(saveAtDatabase.username, Number(saveAtDatabase.id));
-        // return { message: saveAtDatabase.message, username: saveAtDatabase.username, id: saveAtDatabase.id };
+    verifyToken(id: number) {
+        const user = this.usersModelInstance.getProfileById(Number(id));
+        if (user.message === 'error') {
+            return {message: 'error', data: 'invalid_token'};
+        }
+        return {message: 'success', data: user.data };
     }
+
 }
 
 export { AuthService };
